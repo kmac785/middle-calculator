@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Middle Monitor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            min-height: 100vh; 
+            padding: 20px;
+            color: #1d1d1f;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            overflow: hidden;
+        }
+        .header { 
+            background: #1d1d1f;
+            padding: 24px 30px; 
+            color: white;
+        }
+        .header h1 { font-size: 1.5em; font-weight: 600; letter-spacing: -0.5px; }
+        .header p { opacity: 0.8; font-size: 0.9em; margin-top: 4px; font-weight: 400; }
+        
+        .content { padding: 0; }
+        
+        .section { 
+            border-bottom: 1px solid #e5e5e7;
+            padding: 24px 30px;
+        }
+        .section:last-child { border-bottom: none; }
+        
+        .section-label { 
+            font-size: 0.75em; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            color: #86868b;
+            margin-bottom: 16px;
+        }
+        
+        .input-row { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr 1fr; 
+            gap: 12px; 
+            margin-bottom: 12px;
+        }
+        .input-row.two-col { grid-template-columns: 1fr 1fr; }
+        .input-row.full { grid-template-columns: 1fr; }
+        
+        .input-group { display: flex; flex-direction: column; }
+        label { 
+            font-size: 0.85em; 
+            font-weight: 500; 
+            color: #1d1d1f;
+            margin-bottom: 6px;
+        }
+        input, select { 
+            padding: 10px 12px; 
+            border: 1px solid #d2d2d7; 
+            border-radius: 8px; 
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.2s;
+            background: white;
+        }
+        input:focus, select:focus { 
+            outline: none; 
+            border-color: #0071e3;
+            box-shadow: 0 0 0 4px rgba(0,113,227,0.1);
+        }
+        
+        .calculate-btn { 
+            width: 100%; 
+            padding: 14px; 
+            background: #0071e3;
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 1em; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            margin-top: 20px;
+        }
+        .calculate-btn:hover { background: #0077ed; }
+        .calculate-btn:active { transform: scale(0.98); }
+        
+        .clear-btn {
+            padding: 8px 16px;
+            background: transparent;
+            color: #86868b;
+            border: 1px solid #d2d2d7;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 12px;
+        }
+        .clear-btn:hover {
+            background: #f5f5f7;
+            color: #1d1d1f;
+            border-color: #86868b;
+        }
+        
+        .results { display: none; }
+        .results.show { display: block; }
+        
+        /* Status Cards */
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .status-card {
+            padding: 16px;
+            border-radius: 8px;
+            border: 2px solid #e5e5e7;
+        }
+        
+        .status-card.safe { 
+            background: #f0fdf4;
+            border-color: #86efac;
+        }
+        .status-card.competitive { 
+            background: #fef3c7;
+            border-color: #fde047;
+        }
+        .status-card.trouble { 
+            background: #fef2f2;
+            border-color: #fca5a5;
+        }
+        
+        .status-label {
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #86868b;
+            margin-bottom: 4px;
+        }
+        
+        .status-value {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        
+        .status-text {
+            font-size: 0.8em;
+            color: #86868b;
+            margin-top: 4px;
+        }
+        
+        /* Recommendation */
+        .recommendation {
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+        
+        .rec-strong {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        .rec-slight {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        .rec-neutral {
+            background: #f5f5f7;
+            color: #86868b;
+            border: 2px solid #e5e5e7;
+        }
+        .rec-pass {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+        
+        .rec-amount {
+            font-size: 1.8em;
+            margin-top: 8px;
+        }
+        
+        /* Middle Analysis */
+        .middle-analysis {
+            background: #f5f5f7;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+        
+        .middle-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e5e7;
+        }
+        .middle-row:last-child { border-bottom: none; }
+        
+        .middle-label {
+            font-size: 0.9em;
+            color: #6e6e73;
+        }
+        
+        .middle-value {
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .metric-card {
+            padding: 16px;
+            background: #f5f5f7;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .metric-label {
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #86868b;
+            margin-bottom: 6px;
+        }
+        
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        
+        .metric-card.highlight {
+            background: #e8f4ff;
+        }
+        
+        @media (max-width: 600px) { 
+            .input-row, .input-row.two-col { grid-template-columns: 1fr; }
+            .status-grid, .metrics-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Live Middle Monitor</h1>
+            <p>Track pregame bets and find +EV middle opportunities</p>
+        </div>
+        
+        <div class="content">
+            <!-- Pregame Bet Section -->
+            <div class="section">
+                <div class="section-label">Your Pregame Bet</div>
+                
+                <div class="input-row two-col">
+                    <div class="input-group">
+                        <label>Bankroll</label>
+                        <input type="number" id="bankroll" value="1000" placeholder="1000">
+                    </div>
+                    <div class="input-group">
+                        <label>Stake</label>
+                        <input type="number" id="origStake" value="100" placeholder="100">
+                    </div>
+                </div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>Type</label>
+                        <select id="origType">
+                            <option value="over">Over</option>
+                            <option value="under">Under</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Total</label>
+                        <input type="number" id="origTotal" value="45" step="0.5" placeholder="45.5">
+                    </div>
+                    <div class="input-group">
+                        <label>Odds</label>
+                        <input type="number" id="origOdds" value="-110" placeholder="-110">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Game State -->
+            <div class="section">
+                <div class="section-label">Current Game State</div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>Quarter</label>
+                        <select id="quarter">
+                            <option value="1">1st</option>
+                            <option value="2">2nd</option>
+                            <option value="3">3rd</option>
+                            <option value="4" selected>4th</option>
+                            <option value="OT">OT</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Time Left</label>
+                        <input type="text" id="timeLeft" value="8:28" placeholder="8:28">
+                    </div>
+                    <div class="input-group">
+                        <label>Score</label>
+                        <input type="text" id="currentScore" value="27-24" placeholder="27-24">
+                    </div>
+                </div>
+                
+                <button class="clear-btn" onclick="clearGameState()">Clear Game State</button>
+            </div>
+
+            <!-- Live Opportunity -->
+            <div class="section">
+                <div class="section-label">Live Opportunity</div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>Type</label>
+                        <select id="liveType">
+                            <option value="over">Over</option>
+                            <option value="under" selected>Under</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Total</label>
+                        <input type="number" id="liveTotal" value="58.5" step="0.5" placeholder="58.5">
+                    </div>
+                    <div class="input-group">
+                        <label>Odds</label>
+                        <input type="number" id="liveOdds" value="-146" placeholder="-146">
+                    </div>
+                </div>
+                
+                <button class="clear-btn" onclick="clearLiveOdds()">Clear Live Odds</button>
+                <button class="calculate-btn" onclick="calculate()">Analyze Opportunity</button>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results" class="results">
+                <!-- Original Bet Status -->
+                <div class="section">
+                    <div class="section-label">Your Original Bet Status</div>
+                    <div class="status-grid">
+                        <div id="origStatus" class="status-card">
+                            <div class="status-label">Probability to Hit</div>
+                            <div id="origProb" class="status-value"></div>
+                            <div id="origStatusText" class="status-text"></div>
+                        </div>
+                        <div class="status-card">
+                            <div class="status-label">Expected Final</div>
+                            <div id="expectedFinal" class="status-value"></div>
+                            <div id="gameTime" class="status-text"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommendation -->
+                <div class="section">
+                    <div id="recommendation" class="recommendation"></div>
+                    
+                    <div class="middle-analysis">
+                        <div class="middle-row">
+                            <span class="middle-label">Middle Window</span>
+                            <span id="middleWindow" class="middle-value"></span>
+                        </div>
+                        <div class="middle-row">
+                            <span class="middle-label">Both Bets Win</span>
+                            <span id="bothWin" class="middle-value"></span>
+                        </div>
+                        <div class="middle-row">
+                            <span class="middle-label">Exactly One Wins</span>
+                            <span id="oneWin" class="middle-value"></span>
+                        </div>
+                        <div class="middle-row">
+                            <span class="middle-label">Both Bets Lose</span>
+                            <span id="bothLose" class="middle-value"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Metrics -->
+                <div class="section">
+                    <div class="section-label">Key Metrics</div>
+                    <div class="metrics-grid">
+                        <div class="metric-card highlight">
+                            <div class="metric-label">Expected Value</div>
+                            <div id="ev" class="metric-value"></div>
+                        </div>
+                        <div class="metric-card highlight">
+                            <div class="metric-label">Edge vs Market</div>
+                            <div id="edge" class="metric-value"></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Live Bet Probability</div>
+                            <div id="liveProb" class="metric-value"></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Market Implied</div>
+                            <div id="impliedProb" class="metric-value"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function clearGameState() {
+            document.getElementById('quarter').value = '4';
+            document.getElementById('timeLeft').value = '';
+            document.getElementById('currentScore').value = '';
+        }
+        
+        function clearLiveOdds() {
+            document.getElementById('liveType').value = 'under';
+            document.getElementById('liveTotal').value = '';
+            document.getElementById('liveOdds').value = '';
+        }
+        
+        function parseTime(timeStr) {
+            if (timeStr.includes(':')) {
+                const [min, sec] = timeStr.split(':').map(Number);
+                return min + (sec / 60);
+            }
+            return parseFloat(timeStr);
+        }
+
+        function parseScore(scoreStr) {
+            const scores = scoreStr.split('-').map(s => parseInt(s.trim()));
+            return {
+                total: scores[0] + scores[1],
+                diff: Math.abs(scores[0] - scores[1])
+            };
+        }
+
+        function americanToDecimal(odds) {
+            return odds > 0 ? (odds / 100 + 1) : (100 / Math.abs(odds) + 1);
+        }
+
+        function normalCDF(z) {
+            const t = 1 / (1 + 0.2316419 * Math.abs(z));
+            const d = 0.3989423 * Math.exp(-z * z / 2);
+            let prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+            return z > 0 ? 1 - prob : prob;
+        }
+
+        function estimatePointsRemaining(timeLeft, scoreDiff) {
+            let baseRate = 0.85;
+            
+            if (scoreDiff >= 14) {
+                baseRate *= 0.75;
+            } else if (scoreDiff >= 7) {
+                baseRate *= 0.90;
+            } else if (scoreDiff <= 3) {
+                baseRate *= 1.15;
+            }
+            
+            if (timeLeft < 3) {
+                baseRate *= 1.10;
+            }
+            
+            return timeLeft * baseRate;
+        }
+
+        function calculateStandardDeviation(timeLeft, scoreDiff) {
+            let sd = timeLeft > 10 ? 8.5 : 
+                     timeLeft > 5 ? 6.0 : 
+                     timeLeft > 2 ? 3.5 : 2.0;
+            
+            if (scoreDiff >= 14) {
+                sd *= 0.8;
+            } else if (scoreDiff <= 3) {
+                sd *= 1.15;
+            }
+            
+            return sd;
+        }
+
+        function calculate() {
+            const bankroll = parseFloat(document.getElementById('bankroll').value);
+            const origType = document.getElementById('origType').value;
+            const origTotal = parseFloat(document.getElementById('origTotal').value);
+            const origOdds = parseFloat(document.getElementById('origOdds').value);
+            const origStake = parseFloat(document.getElementById('origStake').value);
+            
+            const liveType = document.getElementById('liveType').value;
+            const liveTotal = parseFloat(document.getElementById('liveTotal').value);
+            const liveOdds = parseFloat(document.getElementById('liveOdds').value);
+            
+            const scoreData = parseScore(document.getElementById('currentScore').value);
+            const quarter = document.getElementById('quarter').value;
+            const timeLeftInQuarter = parseTime(document.getElementById('timeLeft').value);
+            
+            // Calculate total time remaining
+            let totalTimeLeft;
+            if (quarter === 'OT') {
+                totalTimeLeft = timeLeftInQuarter;
+            } else {
+                const quarterNum = parseInt(quarter);
+                const quartersRemaining = 4 - quarterNum;
+                totalTimeLeft = timeLeftInQuarter + (quartersRemaining * 15);
+            }
+            
+            // Check valid middle
+            const isValidMiddle = (origType === 'under' && liveType === 'over') || 
+                                 (origType === 'over' && liveType === 'under');
+            
+            if (!isValidMiddle) {
+                alert('No middle possible - both bets are the same type');
+                return;
+            }
+            
+            // Calculate expected final
+            const pointsRemaining = estimatePointsRemaining(totalTimeLeft, scoreData.diff);
+            const expectedFinal = scoreData.total + pointsRemaining;
+            const sd = calculateStandardDeviation(totalTimeLeft, scoreData.diff);
+            
+            // Calculate original bet probability
+            let zOrig, pOrig;
+            if (origType === 'over') {
+                zOrig = (origTotal + 0.5 - expectedFinal) / sd;
+                pOrig = (1 - normalCDF(zOrig)) * 100;
+            } else {
+                zOrig = (origTotal - 0.5 - expectedFinal) / sd;
+                pOrig = normalCDF(zOrig) * 100;
+            }
+            
+            // Calculate live bet probability
+            const liveDecimal = americanToDecimal(liveOdds);
+            const pImplied = (1 / liveDecimal) * 100;
+            
+            let zLive, pLive;
+            if (liveType === 'over') {
+                zLive = (liveTotal + 0.5 - expectedFinal) / sd;
+                pLive = (1 - normalCDF(zLive)) * 100;
+            } else {
+                zLive = (liveTotal - 0.5 - expectedFinal) / sd;
+                pLive = normalCDF(zLive) * 100;
+            }
+            
+            // Calculate middle probabilities
+            const middleLow = Math.min(origTotal, liveTotal);
+            const middleHigh = Math.max(origTotal, liveTotal);
+            const pMiddle = (normalCDF((middleHigh + 0.5 - expectedFinal)/sd) - 
+                           normalCDF((middleLow - 0.5 - expectedFinal)/sd)) * 100;
+            
+            const pBothWin = pMiddle;
+            const pOneWin = ((pOrig / 100) * (1 - pLive / 100) + (pLive / 100) * (1 - pOrig / 100)) * 100;
+            const pBothLose = ((1 - pOrig / 100) * (1 - pLive / 100)) * 100;
+            
+            // Calculate EV
+            const ev = ((pLive / 100) * (liveDecimal - 1)) - ((1 - pLive / 100) * 1);
+            const evDollars = ev * 100;
+            
+            // Calculate suggested bet
+            const edge = (pLive / 100) - (pImplied / 100);
+            const kellyFull = edge / ((liveDecimal - 1) / 1);
+            const kellyQuarter = kellyFull * 0.25;
+            const suggestedBet = Math.max(0, kellyQuarter * bankroll);
+            
+            // Update original bet status
+            const origStatusCard = document.getElementById('origStatus');
+            if (pOrig >= 85) {
+                origStatusCard.className = 'status-card safe';
+                document.getElementById('origStatusText').textContent = 'Cruising - Safe to hunt middles';
+            } else if (pOrig >= 40) {
+                origStatusCard.className = 'status-card competitive';
+                document.getElementById('origStatusText').textContent = 'Competitive - Be selective';
+            } else {
+                origStatusCard.className = 'status-card trouble';
+                document.getElementById('origStatusText').textContent = 'Trouble - Consider hedge';
+            }
+            
+            document.getElementById('origProb').textContent = `${pOrig.toFixed(1)}%`;
+            document.getElementById('expectedFinal').textContent = `${expectedFinal.toFixed(1)} pts`;
+            document.getElementById('gameTime').textContent = `${totalTimeLeft.toFixed(1)} min remaining`;
+            
+            // Update middle analysis
+            document.getElementById('middleWindow').textContent = `${middleLow} - ${middleHigh}`;
+            document.getElementById('bothWin').textContent = `${pBothWin.toFixed(1)}%`;
+            document.getElementById('oneWin').textContent = `${pOneWin.toFixed(1)}%`;
+            document.getElementById('bothLose').textContent = `${pBothLose.toFixed(1)}%`;
+            
+            // Update metrics
+            document.getElementById('ev').textContent = `$${evDollars.toFixed(0)}`;
+            document.getElementById('edge').textContent = `${(pLive - pImplied).toFixed(1)}%`;
+            document.getElementById('liveProb').textContent = `${pLive.toFixed(1)}%`;
+            document.getElementById('impliedProb').textContent = `${pImplied.toFixed(1)}%`;
+            
+            // Recommendation
+            const recEl = document.getElementById('recommendation');
+            let recClass, recText;
+            
+            if (ev > 0.05 && pMiddle > 10) {
+                recClass = 'rec-strong';
+                recText = `STRONG BET<div class="rec-amount">$${Math.round(suggestedBet)}</div>`;
+            } else if (ev > 0.02 && pMiddle > 5) {
+                recClass = 'rec-slight';
+                recText = `SLIGHT EDGE<div class="rec-amount">$${Math.round(suggestedBet * 0.6)}</div>`;
+            } else if (ev > -0.02) {
+                recClass = 'rec-neutral';
+                recText = 'NEUTRAL - PASS<div class="rec-amount">Check back later</div>';
+            } else {
+                recClass = 'rec-pass';
+                recText = 'PASS - NEGATIVE EV<div class="rec-amount">Not worth it</div>';
+            }
+            
+            recEl.innerHTML = recText;
+            recEl.className = `recommendation ${recClass}`;
+            document.getElementById('results').classList.add('show');
+        }
+    </script>
+</body>
+</html>
